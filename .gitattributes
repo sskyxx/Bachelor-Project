@@ -1,2 +1,4 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+df_food_filtered_with_food_group.csv filter=lfs diff=lfs merge=lfs -text
+df_food_filtered_with_food_group.pkl filter=lfs diff=lfs merge=lfs -text
