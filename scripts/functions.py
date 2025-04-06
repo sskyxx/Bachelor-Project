@@ -229,4 +229,136 @@ def compare_di_excluding_nutrient(df, nutrient_to_exclude, disqualifying_nutrien
     return df_plot
 
 
+def remove_outliers(df, column, factor=5):
+ 
+    med = df[column].median()
+    Q1 = df[column].quantile(0.25)
+    Q3 = df[column].quantile(0.75)
+    IQR = Q3 - Q1
+    threshold = med + factor * IQR
+    df_clean = df[df[column] <= threshold]
+    return df_clean, threshold
+
+
+def threshold_median_iqr(df, column, factor=5):
+
+    med = df[column].median()
+    Q1 = df[column].quantile(0.25)
+    Q3 = df[column].quantile(0.75)
+    IQR = Q3 - Q1
+    threshold = med + factor * IQR
+    return threshold
+
+def weighted_mean(values, weights):
+    if weights.sum() != 0:
+        return (values * weights).sum() / weights.sum()
+    else:
+        return np.nan
+
+
+
+def classify_meal_time(dt):
+
+    hour = dt.hour
+    if 7 <= hour < 10:
+        return "breakfast"
+    elif 11 <= hour < 14:
+        return "lunch"
+    elif 15 <= hour < 17:
+        return "snack"
+    elif 18 <= hour < 22:
+        return "dinner"
+    else :
+        return None
+    
+
+def plot_composite_breakfast(subject_breakfast, subject_id, save_path=None):
+
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+
+    ax1.plot(subject_breakfast['breakfast_time'], subject_breakfast['QI'],  marker='o', color='blue', label='QI')
+    ax1.plot(subject_breakfast['breakfast_time'], subject_breakfast['DI'], marker='x', color='orange', label='DI')
+    ax1.set_xlabel('Breakfast Date')
+    ax1.set_ylabel('QI and DI', color='black')
+    ax1.tick_params(axis='y', labelcolor='black')
+
+    ax2 = ax1.twinx()
+    ax2.bar(subject_breakfast['breakfast_time'], subject_breakfast['NB'], width=0.3, color='lightgrey', alpha=0.5, label='NB')
+    ax2.set_ylabel('NB (%)', color='black')
+    ax2.tick_params(axis='y', labelcolor='black')
+
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+
+    plt.title(f'Composite Breakfast Scores Over Time for Subject: {subject_id}')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    
+    if save_path is not None:
+        plt.savefig(save_path)
+        
+    plt.show()
+
+def plot_meal_composite(df, subject_id, target_date, meal_name):
+
+    df_meal = df[(df['subject_key'] == subject_id) & 
+                 (df['date'] == target_date) &
+                 (df['meal'] == meal_name)].copy()
+    
+    if df_meal.empty:
+        print(f"No data for subject {subject_id} on {target_date} for {meal_name}.")
+        return
+    
+
+    
+    total_energy = df_meal['energy_kcal_eaten'].sum()
+    df_meal['energy_pct'] = df_meal['energy_kcal_eaten'] / total_energy * 100
+    
+    plt.figure(figsize=(10, 6))
+    
+    plt.scatter(df_meal['QI'], df_meal['DI'], s=400, color='black', zorder=4)
+    
+    for i, row in df_meal.iterrows():
+        x = row['QI']
+        y = row['DI']
+        nb_val = row['NB']
+        name = row['combined_name']
+        plt.text(x, y, f"{nb_val:.1f}", ha='center', va='center', color='white', fontsize=9, zorder=5)
+        plt.text(x, y + 0.08, name, ha='center', va='bottom', color='black', fontsize=8, rotation=0, zorder=5)
+    
+    # Compute the composite (weighted) meal scores:
+    comp_qi = weighted_mean(df_meal['QI'], df_meal['energy_kcal_eaten'])
+    comp_di = weighted_mean(df_meal['DI'], df_meal['energy_kcal_eaten'])
+    
+    # Compute angles for each point relative to the composite point
+    angles = np.arctan2(df_meal['DI'] - comp_di, df_meal['QI'] - comp_qi)
+    df_meal_sorted = df_meal.copy()
+    df_meal_sorted['angle'] = angles
+    df_meal_sorted.sort_values('angle', inplace=True)
+    
+    loop_qi = df_meal_sorted['QI'].tolist()
+    loop_di = df_meal_sorted['DI'].tolist()
+    loop_qi.append(loop_qi[0])
+    loop_di.append(loop_di[0])
+    
+    plt.plot(loop_qi, loop_di, color='grey', linestyle='--', alpha=0.7, zorder=3)
+    
+    plt.scatter(comp_qi, comp_di, s=600, color='red', zorder=6)
+    plt.text(comp_qi, comp_di, f"Combined Meal\n{weighted_mean(df_meal['NB'], df_meal['energy_kcal_eaten']):.1f}", ha='center', va='center', color='black', fontsize=10, zorder=7)
+    
+
+    plt.axvline(x=1, color='black', linestyle='--', linewidth=1, alpha=0.7)
+    plt.axhline(y=1, color='black', linestyle='--', linewidth=1, alpha=0.7)
+    
+    plt.xlabel('Qualifying Index (QI)')
+    plt.ylabel('Disqualifying Index (DI)')
+    plt.title(f"Composite {meal_name.capitalize()} for Subject {subject_id} on {target_date}")
+    plt.xlim(0, 5)
+    plt.ylim(0, 2)
+    plt.tight_layout()
+    plt.show()
+
+
+   
 
