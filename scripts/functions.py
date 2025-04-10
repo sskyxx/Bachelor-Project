@@ -363,7 +363,7 @@ def plot_meal_composite(df, subject_id, target_date, meal_name, save_path=None):
 
     if save_path is not None:
         plt.savefig(save_path)
-        
+
     plt.show()
 
 
@@ -411,3 +411,46 @@ def plot_day_meals(subject_day_df, subject_id, target_date, save_path=None):
     plt.show()
     
     return df_day
+
+def plot_daily_qi_di_boxplots(composite_df, meal_type=None, save_path=None):
+
+    # Make a copy and optionally filter by meal type
+    df = composite_df.copy()
+    if meal_type is not None:
+        df = df[df['meal'] == meal_type]
+    
+    # Convert 'date' to datetime and extract day-of-week:
+    df['date'] = pd.to_datetime(df['date'])
+    df['day_of_week'] = df['date'].dt.day_name()
+    
+    day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    df['day_of_week'] = pd.Categorical(df['day_of_week'], categories=day_order, ordered=True)
+    
+    df_long = pd.melt(df, 
+                      id_vars=['day_of_week'],
+                      value_vars=['QI', 'DI'],
+                      var_name='Score_Type',
+                      value_name='Score')
+
+    plt.figure(figsize=(10, 6))
+    
+
+    custom_palette = {'QI': 'skyblue', 'DI': 'deeppink'}
+    sns.boxplot(x='day_of_week', y='Score', hue='Score_Type', data=df_long, palette=custom_palette)
+    
+    plt.xlabel("Day of the Week")
+    plt.ylabel("QI, DI")
+    if meal_type is not None:
+        plt.title(f"Composite QI and DI Distributions by Day for {meal_type.capitalize()}")
+    else:
+        plt.title("Composite QI and DI Distributions by Day (All Meals)")
+    
+    plt.legend(title="Score Type", loc="upper left")
+    plt.tight_layout()
+    
+    if save_path is not None:
+        plt.savefig(save_path)
+
+    plt.show()
+    
+    return
