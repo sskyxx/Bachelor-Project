@@ -70,6 +70,27 @@ nutrient_info = {
     'salt_eaten' :                                          {'unit' : 'g',  'target': 6,   'type': 'disqualifying'}
 }
 
+nutrient_choice = ['folate_eaten', 
+                   'niacin_eaten', 
+                   'pantothenic_acid_eaten', 
+                   'vitamin_b2_eaten', 
+                   'vitamin_b1_eaten', 
+                   'all_trans_retinol_equivalents_activity_eaten', 
+                   'beta_carotene_eaten', 
+                   'vitamin_b12_eaten', 
+                   'vitamin_b6_eaten', 
+                   'vitamin_c_eaten', 
+                   'vitamin_d_eaten', 
+                   'vitamin_e_activity_eaten', 
+                   'calcium_eaten', 
+                   'iron_eaten', 
+                   'magnesium_eaten', 
+                   'phosphorus_eaten', 
+                   'potassium_eaten', 
+                   'zinc_eaten', 
+                   'fiber_eaten', 
+                   'protein_eaten']
+
 fruits_categories = {
     'compotes' : [
         'compote', 'mus', 'fruchtmus'
@@ -139,5 +160,14 @@ vegetable_categories = {
 
     ]
 }
+
+
+meal_time_columns = {
+    'breakfast': 'breakfast_time',
+    'lunch': 'lunch_time',
+    'snack': 'snack_time',
+    'dinner': 'dinner_time'
+}
+
 
 

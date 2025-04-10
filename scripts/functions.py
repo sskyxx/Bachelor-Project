@@ -271,19 +271,21 @@ def classify_meal_time(dt):
     else :
         return None
     
-
-def plot_composite_breakfast(subject_breakfast, subject_id, save_path=None):
-
+def plot_meal(subject_meals, subject_id, meal_name, time_column='meal_time', save_path=None):
+    """
+    Plots composite meal scores over time for a given subject.
+    
+    """
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
-    ax1.plot(subject_breakfast['breakfast_time'], subject_breakfast['QI'],  marker='o', color='blue', label='QI')
-    ax1.plot(subject_breakfast['breakfast_time'], subject_breakfast['DI'], marker='x', color='orange', label='DI')
-    ax1.set_xlabel('Breakfast Date')
+    ax1.plot(subject_meals[time_column], subject_meals['QI'], marker='o', linestyle='-', color='blue', label='QI')
+    ax1.plot(subject_meals[time_column], subject_meals['DI'], marker='x', linestyle='-', color='orange', label='DI')
+    ax1.set_xlabel('Meal Date')
     ax1.set_ylabel('QI and DI', color='black')
     ax1.tick_params(axis='y', labelcolor='black')
 
     ax2 = ax1.twinx()
-    ax2.bar(subject_breakfast['breakfast_time'], subject_breakfast['NB'], width=0.3, color='lightgrey', alpha=0.5, label='NB')
+    ax2.bar(subject_meals[time_column], subject_meals['NB'], width=0.3, color='lightgrey', alpha=0.5, label='NB')
     ax2.set_ylabel('NB (%)', color='black')
     ax2.tick_params(axis='y', labelcolor='black')
 
@@ -291,7 +293,7 @@ def plot_composite_breakfast(subject_breakfast, subject_id, save_path=None):
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
 
-    plt.title(f'Composite Breakfast Scores Over Time for Subject: {subject_id}')
+    plt.title(f'Composite "{meal_name.capitalize()}" Scores Over Time for Subject: {subject_id}')
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     
@@ -300,7 +302,7 @@ def plot_composite_breakfast(subject_breakfast, subject_id, save_path=None):
         
     plt.show()
 
-def plot_meal_composite(df, subject_id, target_date, meal_name):
+def plot_meal_composite(df, subject_id, target_date, meal_name, save_path=None):
 
     df_meal = df[(df['subject_key'] == subject_id) & 
                  (df['date'] == target_date) &
@@ -310,7 +312,7 @@ def plot_meal_composite(df, subject_id, target_date, meal_name):
         print(f"No data for subject {subject_id} on {target_date} for {meal_name}.")
         return
     
-
+    df_meal.sort_values('eaten_at', inplace=True)
     
     total_energy = df_meal['energy_kcal_eaten'].sum()
     df_meal['energy_pct'] = df_meal['energy_kcal_eaten'] / total_energy * 100
@@ -330,6 +332,7 @@ def plot_meal_composite(df, subject_id, target_date, meal_name):
     # Compute the composite (weighted) meal scores:
     comp_qi = weighted_mean(df_meal['QI'], df_meal['energy_kcal_eaten'])
     comp_di = weighted_mean(df_meal['DI'], df_meal['energy_kcal_eaten'])
+    comp_nb = weighted_mean(df_meal['NB'], df_meal['energy_kcal_eaten'])
     
     # Compute angles for each point relative to the composite point
     angles = np.arctan2(df_meal['DI'] - comp_di, df_meal['QI'] - comp_qi)
@@ -345,8 +348,8 @@ def plot_meal_composite(df, subject_id, target_date, meal_name):
     plt.plot(loop_qi, loop_di, color='grey', linestyle='--', alpha=0.7, zorder=3)
     
     plt.scatter(comp_qi, comp_di, s=600, color='red', zorder=6)
-    plt.text(comp_qi, comp_di, f"Combined Meal\n{weighted_mean(df_meal['NB'], df_meal['energy_kcal_eaten']):.1f}", ha='center', va='center', color='black', fontsize=10, zorder=7)
-    
+    #plt.text(comp_qi, comp_di, f"Combined Meal\n{weighted_mean(df_meal['NB'], df_meal['energy_kcal_eaten']):.1f}", ha='center', va='center', color='black', fontsize=10, zorder=7)
+    plt.text(comp_qi, comp_di, f"Combined Meal\nNB: {comp_nb:.1f}", ha='center', va='center', color='black', fontsize=10, zorder=7)
 
     plt.axvline(x=1, color='black', linestyle='--', linewidth=1, alpha=0.7)
     plt.axhline(y=1, color='black', linestyle='--', linewidth=1, alpha=0.7)
@@ -354,11 +357,57 @@ def plot_meal_composite(df, subject_id, target_date, meal_name):
     plt.xlabel('Qualifying Index (QI)')
     plt.ylabel('Disqualifying Index (DI)')
     plt.title(f"Composite {meal_name.capitalize()} for Subject {subject_id} on {target_date}")
-    plt.xlim(0, 5)
-    plt.ylim(0, 2)
+    plt.xlim(0, 8)
+    plt.ylim(0, 4)
     plt.tight_layout()
+
+    if save_path is not None:
+        plt.savefig(save_path)
+        
     plt.show()
 
 
-   
+def plot_day_meals(subject_day_df, subject_id, target_date, save_path=None):
+    """
+    Plots composite meal scores for a given subject on a specific day.
+  
+    """
+    meal_order = ['breakfast', 'lunch', 'snack', 'dinner']
 
+    df_day = subject_day_df[subject_day_df['meal'].isin(meal_order)].copy()
+    
+    df_day['meal'] = pd.Categorical(df_day['meal'], categories=meal_order, ordered=True)
+    df_day.sort_values('meal', inplace=True)
+
+    x = np.arange(len(df_day))
+
+    fig, ax1 = plt.subplots(figsize=(10, 6))
+    
+    ax1.plot(x, df_day['QI'], marker='o', linestyle='-', color='blue', label='QI')
+    ax1.plot(x, df_day['DI'], marker='x', linestyle='-', color='orange', label='DI')
+    ax1.set_xlabel("Meal Type")
+    ax1.set_ylabel("Composite QI and DI", color='black')
+    ax1.tick_params(axis='y', labelcolor='black')
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(df_day['meal'], rotation=45, ha='right')
+    
+    ax2 = ax1.twinx()
+    ax2.bar(x, df_day['NB'], width=0.3, color='lightgrey', alpha=0.5, label='NB')
+    ax2.set_ylabel("Composite NB (%)", color='black')
+    ax2.tick_params(axis='y', labelcolor='black')
+ 
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
+    
+
+    plt.title(f"Composite Meal Scores for Subject {subject_id} on {target_date}")
+    plt.tight_layout()
+    
+    # Save the figure if a save_path is provided
+    if save_path is not None:
+        plt.savefig(save_path)
+        
+    plt.show()
+    
+    return df_day
