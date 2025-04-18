@@ -10,6 +10,7 @@ from scipy.stats import mannwhitneyu, ttest_ind, kruskal, f_oneway
 from statannotations.Annotator import Annotator
 from itertools import combinations
 from config import nutrient_info, conversion_factors
+from matplotlib.lines import Line2D
 
 def calculate_ratios(df, nutrient_cols):
     df = df.copy()
@@ -454,3 +455,120 @@ def plot_daily_qi_di_boxplots(composite_df, meal_type=None, save_path=None):
     plt.show()
     
     return
+
+def add_type_of_day(df, date_col='date'):
+    df = df.copy()
+    df[date_col] = pd.to_datetime(df[date_col])
+    df['day_of_week'] = df[date_col].dt.day_name()
+
+    # map Mon–Fri → 'weekday', Sat/Sun → 'weekend'
+    df['type_of_day'] = df['day_of_week'].isin(['Saturday','Sunday']).map({True:'weekend', False:'weekday'})
+    return df
+
+
+
+def test_weekday_vs_weekend(composite_df, min_energy=100):
+    """
+    Runs a Mann–Whitney U test on QI and DI between weekday and weekend.
+
+    """
+    df = composite_df.copy()
+    results = []
+    
+    for meal in df['meal'].unique():
+        sub = df[df['meal'] == meal]
+        sub = sub[sub['total_energy'] >= min_energy]
+        
+    
+        for metric in ['QI', 'DI']:
+            wkday = sub.loc[sub['type_of_day'] == 'weekday', metric].dropna()
+            wkend = sub.loc[sub['type_of_day'] == 'weekend', metric].dropna()
+            if len(wkday) < 5 or len(wkend) < 5:
+                continue
+            
+            U, p = mannwhitneyu(wkday, wkend, alternative='two-sided')
+            results.append({
+                'meal': meal,
+                'metric': metric,
+                'weekday_n': len(wkday),
+                'weekend_n': len(wkend),
+                'U_stat': U,
+                'p_value': p
+            })
+    
+    return pd.DataFrame(results)
+
+def star(p):
+    if p <= 1e-4: return "****"
+    if p <= 1e-3: return "***"
+    if p <= 1e-2: return "**"
+    if p <= 5e-2: return "*"
+    return "ns"
+
+
+def plot_qi_di_by_meal(grouped, agg='mean', save_path=None):
+    """
+    Plot daily QI & DI (solid/dashed) by meal type.
+
+    """
+    df = grouped.copy()
+    days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+    df['day_of_week'] = pd.Categorical(df['day_of_week'], days, ordered=True)
+
+    fig, ax = plt.subplots(figsize=(10,6))
+
+    sns.lineplot(
+        data=df,
+        x='day_of_week',
+        y=f'QI_{agg}',
+        hue='meal',
+        marker='o',
+        ax=ax
+    )
+   
+    sns.lineplot(
+        data=df,
+        x='day_of_week',
+        y=f'DI_{agg}',
+        hue='meal',
+        marker='X',
+        linestyle='--',
+        ax=ax,
+        legend=False
+    )
+
+    ax.set_xlabel('')
+    ax.set_ylabel(f'QI & DI ({agg})')
+    ax.tick_params(axis='x', rotation=45)
+    ax.set_title(f'Daily QI & DI ({agg.capitalize()}) by Meal')
+
+    # meal' legend
+    meal_legend = ax.legend(title='Meal', loc='upper left')
+
+    style_handles = [
+        Line2D([0],[0], color='black', lw=2, linestyle='-'),
+        Line2D([0],[0], color='black', lw=2, linestyle='--'),
+    ]
+    style_labels = ['QI', 'DI']
+
+    ax.add_artist(meal_legend)
+    ax.legend(
+        handles=style_handles,
+        labels=style_labels,
+        title='Metric',
+        loc='upper right'
+    )
+
+    if save_path is not None:
+        plt.savefig(save_path)
+
+    plt.tight_layout()
+    plt.show()
+
+    return fig, ax
+
+
+
+
+
+
