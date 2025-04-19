@@ -569,6 +569,135 @@ def plot_qi_di_by_meal(grouped, agg='mean', save_path=None):
 
 
 
+import os
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def boxplot_qi_di_by_meal_for_day(df,
+                               day_of_week,
+                               meal_order=None,
+                               save_path=None):
+    """
+    For a given weekday boxplots of QI & DI for each of the four meal types on that day.
+
+    """
+    df2 = df[df['day_of_week']==day_of_week].copy()
+
+    # determine meal order
+    if meal_order is None:
+        meal_order = sorted(df2['meal'].unique())
+    df2['meal'] = pd.Categorical(df2['meal'],
+                                 categories=meal_order,
+                                 ordered=True)
+
+
+    long = df2[['meal','QI','DI']].melt(
+        id_vars='meal',
+        value_vars=['QI','DI'],
+        var_name='Metric',
+        value_name='Score'
+    )
+
+    plt.figure(figsize=(10,5))
+    sns.boxplot(data=long,
+                x='meal',
+                y='Score',
+                hue='Metric',
+                palette={'QI':'skyblue','DI':'deeppink'})
+    plt.title(f"{day_of_week} – QI & DI by Meal")
+    plt.xlabel("") 
+    plt.ylabel("Score")
+    plt.legend(title="")
+    plt.tight_layout()
+
+    if save_path:
+        os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+        out = save_path if save_path.endswith(".png") else save_path + ".png"
+        plt.savefig(out, dpi=150)
+        print(f"Saved to {out}")
+
+    plt.show()
+
+
+
+def aggregate_meal_nutrients_fast(df, nutrient_cols):
+    """
+    Vectorized aggregation: for each (subject_key, date, meal) :
+    - sum_energy_for_nutrients = total energy
+    - for each nutrient: energy‐weighted mean of nutrient_ratio_scaled
+    """
+    df2 = df.copy()
+    group_cols = ['subject_key','date','meal']
+    energy = 'energy_kcal_eaten'
+
+  
+    weighted_cols = []
+    for n in nutrient_cols:
+        col = n + '_ratio_scaled'
+        wcol = 'w_' + col
+        df2[wcol] = df2[col] * df2[energy]
+        weighted_cols.append(wcol)
+
+    # group‐energy and weighted columns
+    agg_dict = {energy: 'sum'}
+    agg_dict.update({w: 'sum' for w in weighted_cols})
+
+    grouped = df2.groupby(group_cols).agg(agg_dict)
+    grouped = grouped.rename(columns={energy: 'sum_energy_for_nutrients'})
+
+    # compute weighted mean
+    for n in nutrient_cols:
+        col = n + '_ratio_scaled'
+        wcol = 'w_' + col
+        grouped[col] = grouped[wcol] / grouped['sum_energy_for_nutrients']
+
+    # drop intermediate weighted sums
+    grouped = grouped.drop(columns=weighted_cols).reset_index()
+
+    return grouped
+
+def compute_qi_excluding_scaled(row, nutrient_list, exclude=None):
+    """
+    Compute QI purely as the mean of all row[nutr+'_ratio_scaled'] except the one named by `exclude`.
+    """
+    if exclude is not None:
+        nuts = [n for n in nutrient_list if n != exclude]
+    else:
+        nuts = nutrient_list
+
+    cols = [f"{n}_ratio_scaled" for n in nuts]
+
+    return row[cols].mean()
+
+def rank_nutrient_impact(df, score_col, nutrient_list, exclude_fn):
+    """
+    For each nutrient in nutrient_list, compute the mean drop in `score_col` when nutr is excluded
+
+    """
+    impacts = {}
+    for nut in nutrient_list:
+        excl_scores = df.apply(lambda r: exclude_fn(r, nutrient_list, exclude=nut), axis=1)
+        impacts[nut] = (df[score_col] - excl_scores).mean()
+    return pd.Series(impacts).sort_values(ascending=False)
+
+
+def rank_nutrient_impact_fast(df, score_col, nutrient_list):
+    """
+    Vectorized: for each nutrient in nutrient_list, compute the average drop in score_col when that nutrient is excluded from the simple mean.
+    
+    """
+    p = len(nutrient_list)
+   
+    ratio_cols = [f"{n}_ratio_scaled" for n in nutrient_list]
+    mean_ratios = df[ratio_cols].mean()
+    mean_score  = df[score_col].mean()
+    impacts = (mean_ratios - mean_score) / (p - 1)
+    impacts.index = nutrient_list
+    
+    return impacts.sort_values(ascending=False)
+
+
 
 
 
