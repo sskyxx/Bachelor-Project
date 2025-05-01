@@ -13,6 +13,10 @@ from config import nutrient_info, conversion_factors
 from matplotlib.lines import Line2D
 
 def calculate_ratios(df, nutrient_cols):
+    """
+    Compute for each nutrient the ratio = (amount * unit conversion) / target
+    Return a new DataFrame w/ columns '{nutrient}_ratio'
+    """
     df = df.copy()
 
     for nutr in nutrient_cols:
@@ -24,6 +28,10 @@ def calculate_ratios(df, nutrient_cols):
 
 
 def scale(df, nutrient_cols, scaling_factor=2000):
+    """
+    Scale each '{nutrient}_ratio' by (scaling_factor / energy_kcal_eaten)
+    Return a DataFrame w/ columns '{nutrient}_ratio_scaled'
+    """
     df = df.copy()
 
     for nutr in nutrient_cols:
@@ -35,6 +43,9 @@ def scale(df, nutrient_cols, scaling_factor=2000):
 
 
 def compute_index(row, nutrient_cols, scaling_factor=2000) :
+    """
+    Compute index (QI or DI)
+    """
 
     index = 0
     ratio_sum = 0
@@ -47,6 +58,10 @@ def compute_index(row, nutrient_cols, scaling_factor=2000) :
 
 
 def compute_nb(row, nutrient_cols, scaling_factor=2000) :
+    """
+    Compute Nutrient Balance (NB)
+    """
+
     truncated_ratios = []
     for nutr in nutrient_cols:
         ratio =   row[nutr + '_ratio_scaled']
@@ -59,6 +74,9 @@ def compute_nb(row, nutrient_cols, scaling_factor=2000) :
 
 
 def compute_qi_excluding(row, nutrient_list, exclude=None, scaling_factor=2000):
+    """
+    Compute QI after dropping one nutrient from nutrient_list
+    """
     if exclude is not None:
         new_list = [nutr for nutr in nutrient_list if nutr != exclude]
     else:
@@ -70,7 +88,10 @@ def compute_qi_excluding(row, nutrient_list, exclude=None, scaling_factor=2000):
 
 
 def compare_qi_excluding_nutrient(df, nutrient_to_exclude, qualifying_nutrients, new_col_name=None,scaling_factor=2000):
-
+    """
+    For each food item, compare QI w/ & w/o one qualifying nutrient
+    Plot a bar chart, and return a DataFramw w/ differences
+    """
 
     if new_col_name is None:
         new_col_name = f"QI_excl_{nutrient_to_exclude}"
@@ -106,7 +127,9 @@ def compare_qi_excluding_nutrient(df, nutrient_to_exclude, qualifying_nutrients,
 
 
 def compute_qi_excluding_multiple(row, nutrient_list, exclude_list, scaling_factor=2000):
-
+    """
+    Compute QI after dropping multiple nutrients in exclude_list
+    """
     new_list = nutrient_list.copy()  
 
     for nutr in exclude_list:
@@ -117,7 +140,9 @@ def compute_qi_excluding_multiple(row, nutrient_list, exclude_list, scaling_fact
 
 
 def plot_nutrient_contributions_with_qi(row, nutrient_cols, exclude_list=None, scaling_factor=2000):
-
+    """
+    Plot bar plot of each nutrient's scaled ratio for a single food item, annotated w/ its contribution to QI
+    """
     if exclude_list is not None:
         included_nutrients = [nutr for nutr in nutrient_cols if nutr not in exclude_list]
     else:
@@ -152,7 +177,9 @@ def plot_nutrient_contributions_with_qi(row, nutrient_cols, exclude_list=None, s
 
 
 def compute_nb_excluding(row, nutrient_list, exclude=None, scaling_factor=2000):
-
+    """
+    Compute NB after dropping one nutrient
+    """
     if exclude is not None:
         new_list = [nutr for nutr in nutrient_list if nutr != exclude]
     else:
@@ -161,7 +188,9 @@ def compute_nb_excluding(row, nutrient_list, exclude=None, scaling_factor=2000):
     
 
 def compare_nb_excluding_nutrient(df, nutrient_to_exclude, qualifying_nutrients, new_col_name=None, scaling_factor=2000):
-  
+    """
+    Similar to compare_qi_excluding_nutrient but for NB
+    """
     if new_col_name is None:
         new_col_name = f"NB_excl_{nutrient_to_exclude}"
 
@@ -193,6 +222,9 @@ def compare_nb_excluding_nutrient(df, nutrient_to_exclude, qualifying_nutrients,
 
 
 def compute_nb_excluding_multiple(row, nutrient_list, exclude_list, scaling_factor=2000):
+    """
+    Compute NB after dropping multiple nutrients
+    """
     new_list = nutrient_list.copy()  
     for nutr in exclude_list:
         if nutr in new_list:
@@ -200,7 +232,9 @@ def compute_nb_excluding_multiple(row, nutrient_list, exclude_list, scaling_fact
     return compute_nb(row, new_list, scaling_factor=scaling_factor)
 
 def compare_di_excluding_nutrient(df, nutrient_to_exclude, disqualifying_nutrients, new_col_name=None, scaling_factor=2000):
-
+    """
+    Similar to compare_qi_excluding_nutrient but for DI
+    """
     if new_col_name is None:
         new_col_name = f"DI_excl_{nutrient_to_exclude}"
     df[new_col_name] = df.apply(lambda row: compute_qi_excluding(row, disqualifying_nutrients, exclude=nutrient_to_exclude, scaling_factor=scaling_factor), axis=1)
@@ -231,6 +265,10 @@ def compare_di_excluding_nutrient(df, nutrient_to_exclude, disqualifying_nutrien
 
 
 def remove_outliers(df, column, factor=5):
+    """
+    Drop rows that are above a certain treshold (= median + factor * IQR)
+    Return a DataFrame
+    """
  
     med = df[column].median()
     Q1 = df[column].quantile(0.25)
@@ -242,6 +280,9 @@ def remove_outliers(df, column, factor=5):
 
 
 def threshold_median_iqr(df, column, factor=5):
+    """
+    Compute treshold
+    """
 
     med = df[column].median()
     Q1 = df[column].quantile(0.25)
@@ -251,6 +292,9 @@ def threshold_median_iqr(df, column, factor=5):
     return threshold
 
 def weighted_mean(values, weights):
+    """
+    Compute weignted average
+    """
     if weights.sum() != 0:
         return (values * weights).sum() / weights.sum()
     else:
@@ -259,6 +303,9 @@ def weighted_mean(values, weights):
 
 
 def classify_meal_time(dt):
+    """
+    Assign meal label based on hour of day
+    """
 
     hour = dt.hour
     if 7 <= hour < 10:
@@ -412,6 +459,9 @@ def plot_day_meals(subject_day_df, subject_id, target_date, save_path=None):
     return df_day
 
 def plot_daily_qi_di_boxplots(composite_df, meal_type=None, save_path=None):
+    """
+    Boxplots of QI & DI weekday name
+    """
 
     # Make a copy and filter by meal type
     df = composite_df.copy()
@@ -455,6 +505,11 @@ def plot_daily_qi_di_boxplots(composite_df, meal_type=None, save_path=None):
     return
 
 def add_type_of_day(df, date_col='date'):
+    """
+    Adds two columns :
+        - day_of_weeks
+        - type_of_day ('weekday' vs 'weekend')
+    """
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col])
     df['day_of_week'] = df[date_col].dt.day_name()
@@ -467,7 +522,8 @@ def add_type_of_day(df, date_col='date'):
 
 def test_weekday_vs_weekend(composite_df, min_energy=100):
     """
-    Runs a Mann–Whitney U test on QI and DI between weekday and weekend.
+    Runs a Mann-Whitney U test on QI and DI between weekday and weekend (non-parametric)
+    Return a DataFram of U statistic and p-value
     """
 
     df = composite_df.copy()
@@ -497,6 +553,9 @@ def test_weekday_vs_weekend(composite_df, min_energy=100):
     return pd.DataFrame(results)
 
 def star(p):
+    """
+    Convert p-value into signifiance stars
+    """
     if p <= 1e-4: return "****"
     if p <= 1e-3: return "***"
     if p <= 1e-2: return "**"
@@ -506,7 +565,9 @@ def star(p):
 
 def plot_qi_di_by_meal(grouped, agg='mean', save_path=None):
     """
-    Plot daily QI & DI (solid/dashed) by meal type.
+    Plot daily QI & DI (solid/dashed) by meal type
+
+    agg:    aggregation key ('mean' or 'median')
     """
 
     df = grouped.copy()
@@ -707,37 +768,28 @@ def plot_impact_correlation(
     df_meal_nutrient,
     score_col: str,
     nutrient_list: list[str],
-    exclude_fn,                # still accepted but no longer used
+    exclude_fn,                
     figsize=(8,8),
     cmap="vlag",
     save_path: str|None = None
 ):
     """
-    1) Vectorizes the leave-one-out: for each nutrient i, Δscore = original_score 
-       - mean(all scaled_ratios except i), computed via (sum - col_i)/(m-1).
-    2) Builds the drop matrix (n_meals x n_nutrients) in one go.
-    3) Computes its pairwise corr and draws a clustered heatmap.
+    Clustered heatmap of correlations among score vectors for each nutrient
     """
-    # --- 1) grab the scaled‑ratio matrix and the original scores
+    # assemble scaled-ratio matrix and original score
     cols = [f"{n}_ratio_scaled" for n in nutrient_list]
-    R = df_meal_nutrient[cols].to_numpy()        # shape (n_meals, m_nutrients)
-    orig = df_meal_nutrient[score_col].to_numpy()  # shape (n_meals,)
+    R = df_meal_nutrient[cols].to_numpy()        
+    orig = df_meal_nutrient[score_col].to_numpy()  
     m = R.shape[1]
 
-    # --- 2) compute leave‑one‑out means in bulk
-    row_sums = R.sum(axis=1, keepdims=True)       # (n,1)
-    LOO = (row_sums - R) / (m - 1)                # (n,m)
+    # leave-one-out means & score
+    row_sums = R.sum(axis=1, keepdims=True)       
+    LOO = (row_sums - R) / (m - 1)                
+    delta = orig.reshape(-1,1) - LOO              
 
-    # Δscore matrix: original minus LOO mean
-    delta = orig.reshape(-1,1) - LOO              # (n,m)
-
-    # wrap into DataFrame
     drop_df = pd.DataFrame(delta, columns=nutrient_list, index=df_meal_nutrient.index)
-
-    # --- 3) correlation
     corr = drop_df.corr()
 
-    # --- 4) clustered heatmap
     g = sns.clustermap(
         corr,
         cmap=cmap,
