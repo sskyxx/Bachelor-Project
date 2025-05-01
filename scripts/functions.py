@@ -274,9 +274,9 @@ def classify_meal_time(dt):
     
 def plot_meal(subject_meals, subject_id, meal_name, time_column='meal_time', save_path=None):
     """
-    Plots composite meal scores over time for a given subject.
-    
+    Plots composite meal scores over time for a given subject
     """
+
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
     ax1.plot(subject_meals[time_column], subject_meals['QI'], marker='o', linestyle='-', color='blue', label='QI')
@@ -371,7 +371,6 @@ def plot_meal_composite(df, subject_id, target_date, meal_name, save_path=None):
 def plot_day_meals(subject_day_df, subject_id, target_date, save_path=None):
     """
     Plots composite meal scores for a given subject on a specific day.
-  
     """
     meal_order = ['breakfast', 'lunch', 'snack', 'dinner']
 
@@ -405,7 +404,6 @@ def plot_day_meals(subject_day_df, subject_id, target_date, save_path=None):
     plt.title(f"Composite Meal Scores for Subject {subject_id} on {target_date}")
     plt.tight_layout()
     
-    # Save the figure if a save_path is provided
     if save_path is not None:
         plt.savefig(save_path)
         
@@ -415,12 +413,12 @@ def plot_day_meals(subject_day_df, subject_id, target_date, save_path=None):
 
 def plot_daily_qi_di_boxplots(composite_df, meal_type=None, save_path=None):
 
-    # Make a copy and optionally filter by meal type
+    # Make a copy and filter by meal type
     df = composite_df.copy()
     if meal_type is not None:
         df = df[df['meal'] == meal_type]
     
-    # Convert 'date' to datetime and extract day-of-week:
+    # Convert date to datetime and extract day-of-week
     df['date'] = pd.to_datetime(df['date'])
     df['day_of_week'] = df['date'].dt.day_name()
     
@@ -470,8 +468,8 @@ def add_type_of_day(df, date_col='date'):
 def test_weekday_vs_weekend(composite_df, min_energy=100):
     """
     Runs a Mann–Whitney U test on QI and DI between weekday and weekend.
-
     """
+
     df = composite_df.copy()
     results = []
     
@@ -509,8 +507,8 @@ def star(p):
 def plot_qi_di_by_meal(grouped, agg='mean', save_path=None):
     """
     Plot daily QI & DI (solid/dashed) by meal type.
-
     """
+
     df = grouped.copy()
     days = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
     df['day_of_week'] = pd.Categorical(df['day_of_week'], days, ordered=True)
@@ -568,12 +566,6 @@ def plot_qi_di_by_meal(grouped, agg='mean', save_path=None):
     return fig, ax
 
 
-
-import os
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-
 def boxplot_qi_di_by_meal_for_day(df,
                                day_of_week,
                                meal_order=None,
@@ -627,6 +619,7 @@ def aggregate_meal_nutrients_fast(df, nutrient_cols):
     - sum_energy_for_nutrients = total energy
     - for each nutrient: energy‐weighted mean of nutrient_ratio_scaled
     """
+
     df2 = df.copy()
     group_cols = ['subject_key','date','meal']
     energy = 'energy_kcal_eaten'
@@ -661,20 +654,31 @@ def compute_qi_excluding_scaled(row, nutrient_list, exclude=None):
     """
     Compute QI purely as the mean of all row[nutr+'_ratio_scaled'] except the one named by `exclude`.
     """
+
     if exclude is not None:
         nuts = [n for n in nutrient_list if n != exclude]
     else:
         nuts = nutrient_list
 
     cols = [f"{n}_ratio_scaled" for n in nuts]
-
     return row[cols].mean()
+
+def compute_di_excluding_scaled(row, nutrient_list, exclude=None):
+    """
+    same function as compute_qi_excluding_scaled but for di
+    """
+
+    nuts = [n for n in nutrient_list if n!=exclude]
+    cols = [f"{n}_ratio_scaled" for n in nuts]
+    return row[cols].mean()
+
+
 
 def rank_nutrient_impact(df, score_col, nutrient_list, exclude_fn):
     """
     For each nutrient in nutrient_list, compute the mean drop in `score_col` when nutr is excluded
-
     """
+
     impacts = {}
     for nut in nutrient_list:
         excl_scores = df.apply(lambda r: exclude_fn(r, nutrient_list, exclude=nut), axis=1)
@@ -685,8 +689,8 @@ def rank_nutrient_impact(df, score_col, nutrient_list, exclude_fn):
 def rank_nutrient_impact_fast(df, score_col, nutrient_list):
     """
     Vectorized: for each nutrient in nutrient_list, compute the average drop in score_col when that nutrient is excluded from the simple mean.
-    
     """
+
     p = len(nutrient_list)
    
     ratio_cols = [f"{n}_ratio_scaled" for n in nutrient_list]
@@ -699,5 +703,88 @@ def rank_nutrient_impact_fast(df, score_col, nutrient_list):
 
 
 
+def plot_impact_correlation(
+    df_meal_nutrient,
+    score_col: str,
+    nutrient_list: list[str],
+    exclude_fn,                # still accepted but no longer used
+    figsize=(8,8),
+    cmap="vlag",
+    save_path: str|None = None
+):
+    """
+    1) Vectorizes the leave-one-out: for each nutrient i, Δscore = original_score 
+       - mean(all scaled_ratios except i), computed via (sum - col_i)/(m-1).
+    2) Builds the drop matrix (n_meals x n_nutrients) in one go.
+    3) Computes its pairwise corr and draws a clustered heatmap.
+    """
+    # --- 1) grab the scaled‑ratio matrix and the original scores
+    cols = [f"{n}_ratio_scaled" for n in nutrient_list]
+    R = df_meal_nutrient[cols].to_numpy()        # shape (n_meals, m_nutrients)
+    orig = df_meal_nutrient[score_col].to_numpy()  # shape (n_meals,)
+    m = R.shape[1]
+
+    # --- 2) compute leave‑one‑out means in bulk
+    row_sums = R.sum(axis=1, keepdims=True)       # (n,1)
+    LOO = (row_sums - R) / (m - 1)                # (n,m)
+
+    # Δscore matrix: original minus LOO mean
+    delta = orig.reshape(-1,1) - LOO              # (n,m)
+
+    # wrap into DataFrame
+    drop_df = pd.DataFrame(delta, columns=nutrient_list, index=df_meal_nutrient.index)
+
+    # --- 3) correlation
+    corr = drop_df.corr()
+
+    # --- 4) clustered heatmap
+    g = sns.clustermap(
+        corr,
+        cmap=cmap,
+        center=0,
+        linewidths=0.5,
+        figsize=figsize,
+        cbar_kws={"label": f"corr(Δ{score_col},Δ{score_col})"}
+    )
+    g.ax_heatmap.set_title(f"Correlation of Δ{score_col} impact vectors")
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path, dpi=150)
+    plt.show()
+
+    return corr
+
+
+def nutrient_correlations(df, nutrient_list, score_col):
+    """
+    Computes the absolute Pearson r between each nutrients scaled ratio and the index
+    """
+
+    ratio_cols = [f"{n}_ratio_scaled" for n in nutrient_list]
+    sub = df[df['energy_kcal_eaten'] > 0]  
+    corr = sub[ ratio_cols + [score_col] ].corr()[score_col].drop(score_col)
+    return corr.abs().sort_values(ascending=False)
+
+
+
+def qi_drop_mean(df, nut):
+    """
+    Recompute each meal's QI with exactly one nutrient removed, then measure the average drop in QI 
+    """
+
+    orig = df["QI"]
+    cols = [c for c in df.columns if c.endswith("_ratio_scaled") and not c.startswith(f"{nut}_ratio_scaled")]
+    new_qi = df[cols].mean(axis=1)
+    return (orig - new_qi).mean()
+
+def di_drop_mean(df, nut):
+    """
+    Recompute each meal's QI with exactly one nutrient removed, then measure the average drop in QI 
+    """
+
+    orig = df["DI"]
+    cols = [c for c in df.columns if c.endswith("_ratio_scaled") and not c.startswith(f"{nut}_ratio_scaled")]
+    new_di = df[cols].mean(axis=1)
+    return (orig - new_di).mean()
 
 
