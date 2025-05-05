@@ -62,6 +62,7 @@ nutrient_info = {
     'zinc_eaten':                                           {'unit': 'mg',  'target': 8,    'type': 'qualifying'},
     'fiber_eaten':                                          {'unit': 'g',   'target': 25,   'type': 'qualifying'},
     'protein_eaten':                                        {'unit': 'g',   'target': 46,   'type': 'qualifying'},
+    'water_eaten':                                          {'unit': 'g',   'target' : 2700, 'type' : 'qualifying'}, 
     'fat_eaten':                                            {'unit': 'g',   'target': 78,   'type': 'disqualifying'},
     'fatty_acids_saturated_eaten':                          {'unit': 'g',   'target': 22,   'type': 'disqualifying'},
     'cholesterol_eaten':                                    {'unit': 'mg',  'target': 300,  'type': 'disqualifying'},

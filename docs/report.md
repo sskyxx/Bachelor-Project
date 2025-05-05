@@ -13,22 +13,33 @@ In research of the diet quality, we impletent three complementary indices for ea
 
 
 ### Aims & Questions
-- How do QI, DI and NB vary across major food groups and meal types?
-- Do composite meal scores differ systematically between weekdays and weekend, indicating shofts in diet quality by day of week?
-- Which individual micronutrients exert the greatest impact on QI and DI?
+- How do nutrient quality indices (QI, DI, NB) vary across :
+    - Different food groups?
+    - Meal types (breakfast, lunch, snack, dinner)?
+- What temporal patterns exist in nutritional quality :
+    - Daily meal patterns?
+    - Weekday vs. weekend differences?
+- Which individual micronutrients most significantly impact :
+    - Qualifying Index (QI)?
+    - Disqualifying Index (DI)?
 
 ###
 ---
 
 ## Methods 
 
-1. Index computation
+### Index computation
+1. Nutrient Ratios :
+    - For each nutrient, compute `(amount x conversion_factor) / DRI_target`
+2. Energy Scaling :
+    - Normalize to 2000 kcal intake : `ratio x (2000 / energy_kcal_eaten)`
+3. Composite Indices :
+    - **QI** : mean of scaled qualifying nutrient ratios
+    - **DI** : mean of scaled disqualifying nuetrient ratios
+    - **NB** : truncated mean of qualifying ratios (%)
 
-2. Outlier removal
 
-3. Composite meals
-
-4. Statistical analyses
+### Statistical analyses
 ---
 
 
@@ -40,9 +51,22 @@ In research of the diet quality, we impletent three complementary indices for ea
 3. Nutrient drivers
 ---
 
-## Conclusion
+## Discussion
 ### Main findings
 
 ### Implications
+- Provides quantitave framework for dietary quality assessment
+- Enables targeted nutritional interventions
+- Reveals temporal patterns in eating habits
 
-### Limitations & next steps
+### Limitations
+- Dependene on accurate nutrient reporting
+- Fixed DRIs may not account for individual variability
+- Amount of `energy_kcal_eaten`taken in account 
+
+### Future Directions
+- Integration with clinical outcomes
+- Personalized nutrient target
+
+
+## Conclusion
