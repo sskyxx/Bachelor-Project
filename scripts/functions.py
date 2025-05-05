@@ -73,6 +73,40 @@ def compute_nb(row, nutrient_cols, scaling_factor=2000) :
     return nb_value
 
 
+def filter_implausible_nutrients(df, nutrient_info, conversion_factors):
+    """
+    Remove any rows from df where, for at least one nutrient in nutrient_info,
+    the eaten amount (converted to the DRI units) exceeds its DRI target.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+    nutrient_info : dict
+    conversion_factors : dict
+    
+    Returns
+    -------
+    pd.DataFrame
+    """
+    mask = pd.Series(True, index=df.index)       
+
+    for nutr, info in nutrient_info.items():
+        col = nutr                             
+        if col not in df.columns:
+            # skup if not inside the DataFrame
+            continue
+
+        unit = info['unit']
+        target = info['target']
+        factor = conversion_factors[unit]
+
+        converted = df[col] * factor              
+        
+        mask &= (converted <= target) | converted.isna()
+
+    return df[mask]
+
+
 def compute_qi_excluding(row, nutrient_list, exclude=None, scaling_factor=2000):
     """
     Compute QI after dropping one nutrient from nutrient_list
