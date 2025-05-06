@@ -72,11 +72,11 @@ def compute_nb(row, nutrient_cols, scaling_factor=2000) :
     nb_value =  (sum(truncated_ratios) / len(nutrient_cols)) * 100
     return nb_value
 
-
-def filter_implausible_nutrients(df, nutrient_info, conversion_factors):
+def filter_implausible_nutrients(df, nutrient_info, conversion_factors, max_dri_multiplier=3):
     """
-    Remove any rows from df where, for at least one nutrient in nutrient_info,
-    the eaten amount (converted to the DRI units) exceeds its DRI target.
+    Drops rows where nutrient value exceed :
+    - UL (if defined) or
+    - max_dri_multipplied x DRI (if UL is None )
     
     Parameters
     ----------
@@ -90,21 +90,36 @@ def filter_implausible_nutrients(df, nutrient_info, conversion_factors):
     """
     mask = pd.Series(True, index=df.index)       
 
-    for nutr, info in nutrient_info.items():
-        col = nutr                             
-        if col not in df.columns:
+    for nutr, info in nutrient_info.items():     
+        if nutr not in df.columns:
             # skup if not inside the DataFrame
+            print(f"Skipping {nutr} (not in DataFrame)") 
             continue
 
-        unit = info['unit']
-        target = info['target']
-        factor = conversion_factors[unit]
+        factor = conversion_factors[info['unit']]
+        converted = df[nutr] * factor
 
-        converted = df[col] * factor              
-        
-        mask &= (converted <= target) | converted.isna()
+        # Case 1 : UL exist 
+        ul = info['UL']
 
-    return df[mask]
+        print(f"\nNutrient: {nutr}")  # Debug: Show nutrient being processed
+        print(f"Raw max: {df[nutr].max()} {info['unit']}")  # Debug: Show raw max value
+        print(f"Converted max: {converted.max()} {info['unit']}")  # Debug: Show converted max
+        print(f"UL: {ul}")  # Debug: Show UL
+
+        if ul is not None:
+            print(f"Rows exceeding UL: {(converted > ul).sum()}")  # Debug: Count violations
+            mask &= (converted <= ul) | converted.isna()
+
+        # Case 2 : no UL
+        else:
+            dri = info['target']
+            max_plausible = dri * max_dri_multiplier
+            print(f"Rows exceeding {max_dri_multiplier}x DRI: {(converted > max_plausible).sum()}")  # Debug
+            mask &= (converted <= max_plausible) | converted.isna()
+    print(f"\nTotal rows dropped: {len(df) - mask.sum()}")  # Debug: Total rows removed
+    return df.loc[mask]
+
 
 
 def compute_qi_excluding(row, nutrient_list, exclude=None, scaling_factor=2000):
