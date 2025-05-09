@@ -92,6 +92,42 @@ nutrient_choice = ['folate_eaten',
                    'fiber_eaten', 
                    'protein_eaten']
 
+
+origin_map = {
+    'alcoholic_beverages': 'animal',
+    'butter_margarine_spreads': 'animal',
+    'cream_based_foods': 'animal',
+    'processed_meats': 'animal',
+    'soft_cheese': 'animal',
+    'hard_semi_hard_cheese': 'animal',
+    'milk': 'animal',
+    'yogurt_fresh_dairy': 'animal',
+    'eggs': 'animal',
+    'meat_fish_seafood': 'animal',
+    
+    'sweetened_beverages': 'plant',
+    'vegetable_oils': 'plant',
+    'vegetable_fruit_juices': 'plant',
+    'soy_granules_textured_protein': 'plant',
+    'pulses': 'plant',
+    'nuts_seeds': 'plant',
+    'fruits': 'plant',
+    'potatoes': 'plant',
+    'tofu_tempeh_seitan': 'plant',
+    'vegetables': 'plant',
+    'cereal_grains_starches': 'plant',
+    'breakfast_cereals': 'plant',
+
+    'soups_sauces_condiments': 'mixed',
+    'salty_snacks': 'mixed',
+    'cooked_grains_pasta': 'mixed',
+    'sweets_desserts': 'mixed',
+    'others': 'mixed',
+    'bread_pastries': 'mixed',
+    'processed_foods': 'mixed',
+    'beverages': 'mixed'
+}
+
 fruits_categories = {
     'compotes' : [
         'compote', 'mus', 'fruchtmus'
