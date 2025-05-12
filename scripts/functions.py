@@ -889,3 +889,176 @@ def di_drop_mean(df, nut):
     return (orig - new_di).mean()
 
 
+def significance_test(data, group_col, value_col, alpha=0.05, non_parametric=False):
+    groups = data[group_col].unique()
+    if len(groups) == 2:
+        group1 = data[data[group_col] == groups[0]][value_col]
+        group2 = data[data[group_col] == groups[1]][value_col]
+        if non_parametric:
+            stat, p_val = mannwhitneyu(group1, group2)
+            test_name = "Mann-Whitney U"
+        else:
+            stat, p_val = ttest_ind(group1, group2)
+            test_name = "t-test"
+        return p_val < alpha, p_val, test_name, stat
+    elif len(groups) > 2:
+        group_values = [data[data[group_col] == grp][value_col] for grp in groups]
+        if non_parametric:
+            stat, p_val = kruskal(*group_values)
+            test_name = "Kruskal-Wallis"
+        else:
+            stat, p_val = f_oneway(*group_values)
+            test_name = "ANOVA"
+        return p_val < alpha, p_val, test_name, stat
+    return False, 1.0, "No test", 0
+def create_quartiles(df, column_name, ncut=4):
+    """Add quartile categories (1-4) for a specified column in a DataFrame."""
+    df_copy = df.copy()
+    df_copy[column_name + "_quartile"] = pd.qcut(
+        df_copy[column_name], q=ncut, labels=[f"Q{i}" for i in range(1, ncut + 1)]
+    )
+    return df_copy
+def add_stat_annotation(ax, data, x, y, pairs, test="Mann-Whitney", text_format="star"):
+    """Add statistical annotation bars to the plot."""
+    annotator = Annotator(ax, pairs, data=data, x=x, y=y)
+    annotator.configure(
+        test=test,
+        text_format=text_format,
+        line_width=0.5,  # Thinner lines
+        line_height=0.02,
+    )  # Slightly shorter bars
+    annotator.apply_and_annotate()
+def test_quartile_differences(
+    df,
+    column_name,
+    value_col,
+    extremes=True,
+    alpha=0.05,
+    non_parametric=True,
+    ax=None,
+    palette="Spectral",
+    make_quartile=True,
+    verbose=False,
+):
+    """
+    Test differences between quartiles of a specified column and create a boxplot with significance bars.
+    """
+    df = df.copy()
+    if make_quartile:
+        df = create_quartiles(df, column_name)
+        quartile_col = column_name + "_quartile"
+    else:
+        quartile_col = column_name
+    if extremes:
+        df = df[df[quartile_col].isin(["Q1", "Q4"])]
+        if isinstance(df[quartile_col].dtype, pd.CategoricalDtype):
+            df[quartile_col] = df[quartile_col].cat.remove_unused_categories()
+    # Create plot if ax not provided
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+    # Create boxplot
+    sns.boxplot(
+        data=df,
+        x=quartile_col,
+        y=value_col,
+        ax=ax,
+        linewidth=0.5,
+        fliersize=1,
+        width=0.5,
+        palette=palette,
+    )
+    # Get unique groups and create pairs for comparison
+    groups = sorted(df[quartile_col].dropna().astype(str).unique())
+    if extremes:
+        # If only comparing extremes, just compare Q1 and Q4
+        pairs = [("Q1", "Q4")]
+    else:
+        # Create all possible pairs of quartiles
+        pairs = list(combinations(groups, 2))
+    # Determine statistical test
+    test = "Mann-Whitney" if non_parametric else "t-test"
+    # Add statistical annotation
+    add_stat_annotation(ax, df, x=quartile_col, y=value_col, pairs=pairs, test=test)
+    # Run the original significance test for console output
+    is_sig, p_val, test_name, stat = significance_test(
+        df, quartile_col, value_col, alpha=alpha, non_parametric=non_parametric
+    )
+    if verbose:
+        if is_sig:
+            print(
+                f"{column_name} -> {value_col}\tSignificant differences exist.",
+                f"{test_name} statistic: {stat:.3f} p-value: {p_val:.3f}",
+            )
+        else:
+            print(f"{column_name} -> {value_col}\tNo significant differences.")
+    # Add test statistics to plot
+    ylims = ax.get_ylim()
+    yrange = ylims[1] - ylims[0]
+    text_y = ylims[1] + yrange * 0.05  # Position text above the plot
+    # Format test information with abbreviated names
+    test_abbrev = {
+        "Kruskal-Wallis": "KW",
+        "Mann-Whitney U": "MW",
+        "ANOVA": "ANOVA",
+        "t-test": "t-test",
+    }
+    abbreviated_name = test_abbrev.get(test_name, test_name)
+    if test_name == "Kruskal-Wallis":
+        test_info = f"${abbreviated_name}:$ $H={stat:.2f}$, $p={p_val:.3f}$"
+    elif test_name == "Mann-Whitney U":
+        test_info = f"${abbreviated_name}:$ $U={stat:.2f}$, $p={p_val:.3f}$"
+    else:
+        test_info = f"${abbreviated_name}:$ $t={stat:.2f}$, $p={p_val:.3f}$"
+    # Add text with test information
+    ax.text(
+        0,
+        text_y,
+        test_info,
+        horizontalalignment="left",
+        verticalalignment="bottom",
+        fontsize=8,
+    )
+    # Adjust plot limits 
+    # to accommodate the text
+    ax.set_ylim(ylims[0], ylims[1] + yrange * 0.15)
+    return ax
+
+
+def plot_qi_nb_scatter(subject_id, df, start_date=None, end_date=None):
+    
+
+    subject_df = df[df['subject_key'] == subject_id].copy()
+    
+    # Look at specific time frame
+    if start_date is not None:
+        subject_df = subject_df[subject_df['date'] >= start_date]
+    if end_date is not None:
+        subject_df = subject_df[subject_df['date'] <= end_date]
+
+  
+    daily_agg = (subject_df.groupby('date')[['QI', 'NB']].median().reset_index())
+    
+
+    plt.figure(figsize=(10, 8))
+    
+    # Individual meal components
+    plt.scatter(subject_df['QI'], subject_df['NB'], color='black', alpha=0.7, label='Individual Meal Components')
+    
+    # Daily aggregated values 
+    plt.scatter(daily_agg['QI'], daily_agg['NB'], color='red', s=80, label='Daily Combined Meals')
+    
+    
+    plt.axvline(x=1, color='black', linestyle='--', alpha=1)
+   
+    plt.xlabel('Qualifying Index (QI)')
+    plt.ylabel('% Nutrient Balance (NB)')
+    plt.xlim(0, 14)
+    plt.title(f'QI vs NB for Subject : {subject_id}')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+    print(daily_agg)
+
+
