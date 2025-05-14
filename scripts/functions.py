@@ -1106,8 +1106,6 @@ def nonparametric_group_comparison(df, value_col, group_col='food_group', alpha=
         r['significant'] = sig
     
     posthoc_df = pd.DataFrame(results).sort_values('p_adjusted')
-    print(f"\nPairwise Mann-Whitney U with {p_adjust_method} adjustment:")
-    display(posthoc_df[['group1','group2','U_stat','p_uncorrected','p_adjusted','significant']])
     
     return H, p_kruskal, posthoc_df
 
