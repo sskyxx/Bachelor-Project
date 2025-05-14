@@ -11,6 +11,9 @@ from statannotations.Annotator import Annotator
 from itertools import combinations
 from config import nutrient_info, conversion_factors
 from matplotlib.lines import Line2D
+import itertools
+from statsmodels.stats.multitest import multipletests
+from IPython.display import display
 
 def calculate_ratios(df, nutrient_cols):
     """
@@ -1061,4 +1064,50 @@ def plot_qi_nb_scatter(subject_id, df, start_date=None, end_date=None):
 
     print(daily_agg)
 
+
+def nonparametric_group_comparison(df, value_col, group_col='food_group', alpha=0.05, p_adjust_method='bonferroni'):
+    """
+    Performs a Kruskal-Wallis test across groups and pairwise Mann-Whitney U tests with p-value adjustment
+    
+    Parameters:
+    - df: pandas DataFrame
+    - value_col: column name for the metric
+    - group_col: 
+    - alpha: significance level 
+    - p_adjust_method: method for p-value adjustment 
+    
+    Returns:
+    - H: Kruskal-Wallis H statistic
+    - p_kruskal: Kruskal-Wallis p-value
+    - posthoc_df: DataFrame with pairwise comparisons and adjusted p-values
+
+    """
+    # Kruskal–Wallis test
+    groups = [grp[value_col].values for _, grp in df.groupby(group_col)]
+    H, p_kruskal = kruskal(*groups)
+    print(f"Kruskal-Wallis H for {value_col} = {H:.2f}, p = {p_kruskal:.3g}")
+    
+    # Pairwise Mann–Whitney U tests
+    group_dict = {name: grp[value_col].values for name, grp in df.groupby(group_col)}
+    pairs = list(itertools.combinations(group_dict.keys(), 2))
+    results = []
+    for g1, g2 in pairs:
+        u_stat, p_unc = mannwhitneyu(group_dict[g1], group_dict[g2], alternative='two-sided')
+        results.append({
+            'group1': g1, 'group2': g2,
+            'U_stat': u_stat, 'p_uncorrected': p_unc
+        })
+    
+    # P-value adjustment
+    p_unc_list = [r['p_uncorrected'] for r in results]
+    rej, p_adj, _, _ = multipletests(p_unc_list, alpha=alpha, method=p_adjust_method)
+    for r, p_a, sig in zip(results, p_adj, rej):
+        r['p_adjusted'] = p_a
+        r['significant'] = sig
+    
+    posthoc_df = pd.DataFrame(results).sort_values('p_adjusted')
+    print(f"\nPairwise Mann-Whitney U with {p_adjust_method} adjustment:")
+    display(posthoc_df[['group1','group2','U_stat','p_uncorrected','p_adjusted','significant']])
+    
+    return H, p_kruskal, posthoc_df
 
