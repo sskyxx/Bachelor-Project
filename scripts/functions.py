@@ -1027,7 +1027,7 @@ def test_quartile_differences(
     return ax
 
 
-def plot_qi_nb_scatter(subject_id, df, start_date=None, end_date=None):
+def plot_qi_nb_scatter(subject_id, df, start_date=None, end_date=None, save_path=None):
     
 
     subject_df = df[df['subject_key'] == subject_id].copy()
@@ -1060,6 +1060,10 @@ def plot_qi_nb_scatter(subject_id, df, start_date=None, end_date=None):
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
+
+    if save_path is not None:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+
     plt.show()
 
     print(daily_agg)

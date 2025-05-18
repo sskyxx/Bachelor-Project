@@ -1,32 +1,30 @@
-# Bachelor Project - "Examining Nutritional Quality of Meals On a Swiss Digital Nutrition Cohort"
+# Nutrient Quality Analysis for Swiss Digital Nutrition Cohort
 
+## 📋 Project Overview
+This project implements a **comprehensive framework** for assessing the **nutrient balance** of individual food items and composite meals, using three innovative indices:
+- **QI (Qualifying Index)**: Measures beneficial micronutrients.
+- **DI (Disqualifying Index)**: Measures less desirable micronutrients.
+- **NB (Nutrient Balance)**: Overall nutrient balance score (%).
 
-## Introduction
-This repository implements a set of tools and analyses for assessing the **nutrient balance concept** of individual food and composite meals. We compute three indices :
-- **QI** (Qualifying Index) : a measure based on qualifying/good micronutrients
-- **DI** (Disqualifying Index) : a measure based on disqualifying/bad micronutrients
-- **NB** (Nutrient Balance) : an overall balance score (%)
-
-Using these results, we analyse :
-- How food group and meal-type affect nutrient quality
-- Time-wise daily pattern
-- Which micronutrients most inflence QI/DI
-
+### Key Analyses:
+- Nutrient quality across food groups and meal types.
+- Temporal patterns in meal quality.
+- Micronutrient impact on QI/DI.
 
 ---
 
-## Features
-- Compute nutrient quality indices (QI, DI and NB) for meals
-- Clean data my removing outliers
-- Visualize
-    - Distributions by food group
-    - Weekday vs. weekend meal type
-    - Composite meal
-- Rank micronutrients impacts on nutrient quality indices
+## 🌟 Features
+- **Quality Index Calculation**: QI, DI, NB computation.
+- **Data Cleaning**: Outlier detection and removal.
+- **Visualizations**:
+  - Nutrient distribution by food group.
+  - Weekday vs. weekend analysis.
+  - Composite meal assessment.
+- **Ranking**: Identify top micronutrient contributors.
 
 
 ---
-## Setup
+## 🚀 Setup
 ```yaml
 name : nutrient-env
 channels :
@@ -42,7 +40,7 @@ dependencies :
 - scikit-learn
 ```
 
-1. Clone this repo
+1. Clone the repository
 ```bash
 git clone https://github.com/sskyxx/Bachelor-Project.git
 cd Bachelor-Project
@@ -57,7 +55,7 @@ conda activate nutrient-env
 pip install -r requirements.txt
 ``` 
 ---
-## Usage
+## 📊 Usage
 ### Data preparation
 Run `analysis/nutrient_metric.ipynb`to :
 - Load raw data food
@@ -65,14 +63,15 @@ Run `analysis/nutrient_metric.ipynb`to :
 
 ### Running analyses
 Run the notebooks in `analysis/` :
-- `outliers.ipynb` 
-- `food_group_analysis.ipynb`
-- `food_item_composed.ipynb`
-- `composite_meals.ipynb`
+- `outliers.ipynb` : Data cleaning and outlier removal
+- `food_group_analysis.ipynb` : Food group analysis
+- `composite_meals.ipynb` : Composite meal analysis
+- `impact_on_indices.ipynb` : Impact of micronutrient in QI/DI
+- `statistical_tests.ipynb`: Statistical tests
 
 ---
 
-## Scripts & modules
+## 🛠️ Scripts & modules
 
 All core utility are in `scripts/functions.py`
 
